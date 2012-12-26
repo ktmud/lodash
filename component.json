@@ -15,7 +15,8 @@
   "development": {},
   "main": "index.js",
   "scripts": [
-    "index.js"
+    "index.js",
+    "lodash.js"
   ],
   "license": "MIT"
 }
