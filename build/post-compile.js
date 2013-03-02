@@ -2,7 +2,7 @@
 ;(function() {
   'use strict';
 
-  /** The Node filesystem module */
+  /** The Node.js filesystem module */
   var fs = require('fs');
 
   /** The minimal license/copyright template */
@@ -10,7 +10,7 @@
     '/**',
     ' * @license',
     ' * Lo-Dash <%= VERSION %> lodash.com/license',
-    ' * Underscore.js 1.4.3 underscorejs.org/LICENSE',
+    ' * Underscore.js 1.4.4 underscorejs.org/LICENSE',
     ' */'
   ].join('\n');
 
@@ -24,37 +24,31 @@
    * @returns {String} Returns the processed source.
    */
   function postprocess(source) {
-    // remove old copyright/license header
+    // remove copyright header
     source = source.replace(/^\/\**[\s\S]+?\*\/\n/, '');
 
-    // move vars exposed by the Closure Compiler into the IIFE
-    source = source.replace(/^((?:(['"])use strict\2;)?(?:var (?:[a-z]+=(?:!0|!1|null)[,;])+)?)([\s\S]*?function[^)]+\){)/, '$3$1');
-
     // correct overly aggressive Closure Compiler advanced optimizations
-    source = source.replace(/prototype\s*=\s*{\s*valueOf\s*:\s*1\s*}/, 'prototype={valueOf:1,y:1}');
-
-    // unescape properties (e.g. foo["bar"] => foo.bar)
-    source = source.replace(/(\w)\["([^."]+)"\]/g, function(match, left, right) {
-      return /\W/.test(right) ? match : (left + '.' + right);
-    });
+    source = source
+      .replace(/prototype\s*=\s*{\s*valueOf\s*:\s*1\s*}/, 'prototype={valueOf:1,y:1}')
+      .replace(/(document[^&]+&&)\s*(?:\w+|!\d)/, '$1!({toString:0}+"")');
 
     // flip `typeof` expressions to help optimize Safari and
     // correct the AMD module definition for AMD build optimizers
     // (e.g. from `"number" == typeof x` to `typeof x == "number")
-    source = source.replace(/(return)?("[^"]+")\s*([!=]=)\s*(typeof(?:\s*\([^)]+\)|\s+[\w.]+))/g, function(match, ret, type, equality, expression) {
-      return (ret ? ret + ' ' : '') + expression + equality + type;
+    source = source.replace(/(\w)?("[^"]+")\s*([!=]=)\s*(typeof(?:\s*\([^)]+\)|\s+[.\w]+(?!\[)))/g, function(match, other, type, equality, expression) {
+      return (other ? other + ' ' : '') + expression + equality + type;
     });
 
     // add trailing semicolon
     if (source) {
-      source = source.replace(/[\s;]*$/, ';');
+      source = source.replace(/[\s;]*?(\s*\/\/.*\s*|\s*\/\*[^*]*\*+(?:[^\/][^*]*\*+)*\/\s*)*$/, ';$1');
     }
     // exit early if version snippet isn't found
     var snippet = /VERSION\s*[=:]\s*([\'"])(.*?)\1/.exec(source);
     if (!snippet) {
       return source;
     }
-    // add new copyright/license header
+    // add new copyright header
     var version = snippet[2];
     source = licenseTemplate.replace('<%= VERSION %>', version) + '\n;' + source;
 

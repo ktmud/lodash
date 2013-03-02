@@ -1,7 +1,29 @@
 (function(window) {
 
-  /** Use a single load function */
+  /** Use a single "load" function */
   var load = typeof require == 'function' ? require : window.load;
+
+  /** The file path of the Lo-Dash file to test */
+  var filePath = (function() {
+    var min = 0;
+    var result = window.phantom
+      ? phantom.args
+      : (window.system
+          ? (min = 1, system.args)
+          : (window.process ? (min = 2, process.argv) : (window.arguments || []))
+        );
+
+    var last = result[result.length - 1];
+    result = (result.length > min && !/test(?:\.js)?$/.test(last))
+      ? last
+      : '../lodash.js';
+
+    try {
+      result = require('fs').realpathSync(result);
+    } catch(e) { }
+
+    return result;
+  }());
 
   /** Load Benchmark.js */
   var Benchmark =
@@ -13,7 +35,7 @@
   /** Load Lo-Dash */
   var lodash =
     window.lodash || (
-      lodash = load('../lodash.js') || window._,
+      lodash = load(filePath) || window._,
       lodash = lodash._ || lodash,
       lodash.noConflict()
     );
@@ -35,21 +57,26 @@
   var suites = [];
 
   /** The `ui` object */
-  var ui = window.ui || {};
+  var ui = window.ui || ({
+    'buildPath': basename(filePath, '.js'),
+    'otherPath': 'underscore'
+  });
 
   /** The Lo-Dash build basename */
-  var buildName = basename(ui.buildPath || 'lodash', '.js');
+  var buildName = basename(ui.buildPath, '.js');
 
   /** The other library basename */
-  var otherName = basename(ui.otherPath || 'underscore', '.js');
-
-  /** Add `console.log()` support for Narwhal and RingoJS */
-  window.console || (window.console = { 'log': window.print });
+  var otherName = basename(ui.otherPath, '.js');
 
   /** Expose functions to the global object */
   window._ = _;
   window.Benchmark = Benchmark;
   window.lodash = lodash;
+
+  /** Add `console.log()` support for Narwhal and RingoJS */
+  if (!window.console && window.print) {
+    window.console = { 'log': window.print };
+  }
 
   /*--------------------------------------------------------------------------*/
 
@@ -188,7 +215,7 @@
           numbers = Array(limit),\
           fourNumbers = [5, 25, 10, 30],\
           nestedNumbers = [1, [2], [3, [[4]]]],\
-          twoNumbers = [12, 21];\
+          twoNumbers = [12, 23];\
       \
       for (index = 0; index < limit; index++) {\
         numbers[index] = index;\
@@ -205,11 +232,9 @@
         };\
         \
         var lodashBoundNormal = lodash.bind(func, contextObject),\
-            lodashBoundCtor = lodash.bind(ctor, contextObject),\
             lodashBoundPartial = lodash.bind(func, contextObject, "hi");\
         \
         var _boundNormal = _.bind(func, contextObject),\
-            _boundCtor = _.bind(ctor, contextObject),\
             _boundPartial = _.bind(func, contextObject, "hi");\
       }\
       \
@@ -295,7 +320,13 @@
         var object2 = {},\
             objects2 = Array(limit),\
             numbers2 = Array(limit),\
-            nestedNumbers2 = [1, [2], [3, [[4]]]];\
+            nestedNumbers2 = [1, [2], [3, [[4]]]],\
+            nestedNumbers3 = [1, [2], [5, [[6]]]],\
+            simpleObject = { "a": 1 },\
+            simpleObject2 = { "a": 2 },\
+            simpleObjects = [simpleObject],\
+            simpleObjects2 = [simpleObject2],\
+            twoNumbers2 = [18, 27];\
         \
         for (index = 0; index < limit; index++) {\
           object2["key" + index] = index;\
@@ -384,33 +415,14 @@
           "list": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]\
         };\
         \
-        var tplBase =\
+        var tpl =\
           "<div>" +\
           "<h1 class=\'header1\'><%= header1 %></h1>" +\
           "<h2 class=\'header2\'><%= header2 %></h2>" +\
           "<h3 class=\'header3\'><%= header3 %></h3>" +\
           "<h4 class=\'header4\'><%= header4 %></h4>" +\
           "<h5 class=\'header5\'><%= header5 %></h5>" +\
-          "<h6 class=\'header6\'><%= header6 %></h6>";\
-        \
-        var tpl =\
-          tplBase +\
-          "<ul class=\'list\'>" +\
-          "<li class=\'item\'><%= list[0] %></li>" +\
-          "<li class=\'item\'><%= list[1] %></li>" +\
-          "<li class=\'item\'><%= list[2] %></li>" +\
-          "<li class=\'item\'><%= list[3] %></li>" +\
-          "<li class=\'item\'><%= list[4] %></li>" +\
-          "<li class=\'item\'><%= list[5] %></li>" +\
-          "<li class=\'item\'><%= list[6] %></li>" +\
-          "<li class=\'item\'><%= list[7] %></li>" +\
-          "<li class=\'item\'><%= list[8] %></li>" +\
-          "<li class=\'item\'><%= list[9] %></li>" +\
-          "</ul>" +\
-          "</div>";\
-        \
-        var tplWithEvaluate =\
-          tplBase +\
+          "<h6 class=\'header6\'><%= header6 %></h6>" +\
           "<ul class=\'list\'>" +\
           "<% for (var index = 0, length = list.length; index < length; index++) { %>" +\
           "<li class=\'item\'><%= list[index] %></li>" +\
@@ -418,33 +430,14 @@
           "</ul>" +\
           "</div>";\
         \
-        var tplBaseVerbose =\
+        var tplVerbose =\
           "<div>" +\
           "<h1 class=\'header1\'><%= data.header1 %></h1>" +\
           "<h2 class=\'header2\'><%= data.header2 %></h2>" +\
           "<h3 class=\'header3\'><%= data.header3 %></h3>" +\
           "<h4 class=\'header4\'><%= data.header4 %></h4>" +\
           "<h5 class=\'header5\'><%= data.header5 %></h5>" +\
-          "<h6 class=\'header6\'><%= data.header6 %></h6>";\
-        \
-        var tplVerbose =\
-          tplBaseVerbose +\
-          "<ul class=\'list\'>" +\
-          "<li class=\'item\'><%= data.list[0] %></li>" +\
-          "<li class=\'item\'><%= data.list[1] %></li>" +\
-          "<li class=\'item\'><%= data.list[2] %></li>" +\
-          "<li class=\'item\'><%= data.list[3] %></li>" +\
-          "<li class=\'item\'><%= data.list[4] %></li>" +\
-          "<li class=\'item\'><%= data.list[5] %></li>" +\
-          "<li class=\'item\'><%= data.list[6] %></li>" +\
-          "<li class=\'item\'><%= data.list[7] %></li>" +\
-          "<li class=\'item\'><%= data.list[8] %></li>" +\
-          "<li class=\'item\'><%= data.list[9] %></li>" +\
-          "</ul>" +\
-          "</div>";\
-        \
-        var tplVerboseWithEvaluate =\
-          tplBaseVerbose +\
+          "<h6 class=\'header6\'><%= data.header6 %></h6>" +\
           "<ul class=\'list\'>" +\
           "<% for (var index = 0, length = data.list.length; index < length; index++) { %>" +\
           "<li class=\'item\'><%= data.list[index] %></li>" +\
@@ -455,14 +448,10 @@
         var settingsObject = { "variable": "data" };\
         \
         var lodashTpl = lodash.template(tpl),\
-            lodashTplWithEvaluate = lodash.template(tplWithEvaluate),\
-            lodashTplVerbose = lodash.template(tplVerbose, null, settingsObject),\
-            lodashTplVerboseWithEvaluate = lodash.template(tplVerboseWithEvaluate, null, settingsObject);\
+            lodashTplVerbose = lodash.template(tplVerbose, null, settingsObject);\
         \
         var _tpl = _.template(tpl),\
-            _tplWithEvaluate = _.template(tplWithEvaluate),\
-            _tplVerbose = _.template(tplVerbose, null, settingsObject),\
-            _tplVerboseWithEvaluate = _.template(tplVerboseWithEvaluate, null, settingsObject);\
+            _tplVerbose = _.template(tplVerbose, null, settingsObject);\
       }'
   });
 
@@ -524,18 +513,6 @@
       })
       .add(otherName, {
         'fn': '_boundPartial("!")',
-        'teardown': 'function bind(){}'
-      })
-  );
-
-  suites.push(
-    Benchmark.Suite('bound and called in a `new` expression, i.e. `new bound` (edge case)')
-      .add(buildName, {
-        'fn': 'new lodashBoundCtor()',
-        'teardown': 'function bind(){}'
-      })
-      .add(otherName, {
-        'fn': 'new _boundCtor()',
         'teardown': 'function bind(){}'
       })
   );
@@ -864,6 +841,16 @@
       )
   );
 
+  suites.push(
+    Benchmark.Suite('`_.find` with `properties`')
+      .add(buildName, '\
+        lodash.find(objects, { "num": 9 });'
+      )
+      .add(otherName, '\
+        _.findWhere(objects, { "num": 9 });'
+      )
+  );
+
   /*--------------------------------------------------------------------------*/
 
   suites.push(
@@ -1041,11 +1028,15 @@
   suites.push(
     Benchmark.Suite('`_.isEqual` comparing arrays')
       .add(buildName, {
-        'fn': 'lodash.isEqual(numbers, numbers2)',
+        'fn': '\
+          lodash.isEqual(numbers, numbers2);\
+          lodash.isEqual(twoNumbers, twoNumbers2);',
         'teardown': 'function isEqual(){}'
       })
       .add(otherName, {
-        'fn': '_.isEqual(numbers, numbers2)',
+        'fn': '\
+          _.isEqual(numbers, numbers2);\
+          _.isEqual(twoNumbers, twoNumbers2);',
         'teardown': 'function isEqual(){}'
       })
   );
@@ -1053,11 +1044,15 @@
   suites.push(
     Benchmark.Suite('`_.isEqual` comparing nested arrays')
       .add(buildName, {
-        'fn': 'lodash.isEqual(nestedNumbers, nestedNumbers2)',
+        'fn': '\
+          lodash.isEqual(nestedNumbers, nestedNumbers2);\
+          lodash.isEqual(nestedNumbers2, nestedNumbers3);',
         'teardown': 'function isEqual(){}'
       })
       .add(otherName, {
-        'fn': '_.isEqual(nestedNumbers, nestedNumbers2)',
+        'fn': '\
+          _.isEqual(nestedNumbers, nestedNumbers2);\
+          _.isEqual(nestedNumbers2, nestedNumbers3);',
         'teardown': 'function isEqual(){}'
       })
   );
@@ -1065,11 +1060,15 @@
   suites.push(
     Benchmark.Suite('`_.isEqual` comparing arrays of objects')
       .add(buildName, {
-        'fn': 'lodash.isEqual(objects, objects2)',
+        'fn': '\
+          lodash.isEqual(objects, objects2);\
+          lodash.isEqual(simpleObjects, simpleObjects2);',
         'teardown': 'function isEqual(){}'
       })
       .add(otherName, {
-        'fn': '_.isEqual(objects, objects2)',
+        'fn': '\
+          _.isEqual(objects, objects2);\
+          _.isEqual(simpleObjects, simpleObjects2);',
         'teardown': 'function isEqual(){}'
       })
   );
@@ -1077,11 +1076,15 @@
   suites.push(
     Benchmark.Suite('`_.isEqual` comparing objects')
       .add(buildName, {
-        'fn': 'lodash.isEqual(object, object2)',
+        'fn': '\
+          lodash.isEqual(object, object2);\
+          lodash.isEqual(simpleObject, simpleObject2);',
         'teardown': 'function isEqual(){}'
       })
       .add(otherName, {
-        'fn': '_.isEqual(object, object2)',
+        'fn': '\
+          _.isEqual(object, object2);\
+          _.isEqual(simpleObject, simpleObject2);',
         'teardown': 'function isEqual(){}'
       })
   );
@@ -1515,7 +1518,7 @@
   /*--------------------------------------------------------------------------*/
 
   suites.push(
-    Benchmark.Suite('`_.template` without "evaluate" delimiters (slow path)')
+    Benchmark.Suite('`_.template` (slow path)')
       .add(buildName, {
         'fn': 'lodash.template(tpl, tplData)',
         'teardown': 'function template(){}'
@@ -1527,19 +1530,7 @@
   );
 
   suites.push(
-    Benchmark.Suite('`_.template` with "evaluate" delimiters (slow path)')
-      .add(buildName, {
-        'fn': 'lodash.template(tplWithEvaluate, tplData)',
-        'teardown': 'function template(){}'
-      })
-      .add(otherName, {
-        'fn': '_.template(tplWithEvaluate, tplData)',
-        'teardown': 'function template(){}'
-      })
-  );
-
-  suites.push(
-    Benchmark.Suite('compiled template without "evaluate" delimiters')
+    Benchmark.Suite('compiled template')
       .add(buildName, {
         'fn': 'lodashTpl(tplData)',
         'teardown': 'function template(){}'
@@ -1551,37 +1542,13 @@
   );
 
   suites.push(
-    Benchmark.Suite('compiled template with "evaluate" delimiters')
-      .add(buildName, {
-        'fn': 'lodashTplWithEvaluate(tplData)',
-        'teardown': 'function template(){}'
-      })
-      .add(otherName, {
-        'fn': '_tplWithEvaluate(tplData)',
-        'teardown': 'function template(){}'
-      })
-  );
-
-  suites.push(
-    Benchmark.Suite('compiled template without a with-statement or "evaluate" delimiters')
+    Benchmark.Suite('compiled template without a with-statement')
       .add(buildName, {
         'fn': 'lodashTplVerbose(tplData)',
         'teardown': 'function template(){}'
       })
       .add(otherName, {
         'fn': '_tplVerbose(tplData)',
-        'teardown': 'function template(){}'
-      })
-  );
-
-  suites.push(
-    Benchmark.Suite('compiled template without a with-statement using "evaluate" delimiters')
-      .add(buildName, {
-        'fn': 'lodashTplVerboseWithEvaluate(tplData)',
-        'teardown': 'function template(){}'
-      })
-      .add(otherName, {
-        'fn': '_tplVerboseWithEvaluate(tplData)',
         'teardown': 'function template(){}'
       })
   );
@@ -1733,13 +1700,13 @@
   );
 
   suites.push(
-    Benchmark.Suite('`_.without` iterating an array of 20 elements')
+    Benchmark.Suite('`_.without` iterating an array of 30 elements')
       .add(buildName, {
-        'fn': 'lodash.without.apply(lodash, [twentyValues].concat(twentyValues2));',
+        'fn': 'lodash.without.apply(lodash, [thirtyValues].concat(thirtyValues2));',
         'teardown': 'function multiArrays(){}'
       })
       .add(otherName, {
-        'fn': '_.without.apply(_, [twentyValues].concat(twentyValues2));',
+        'fn': '_.without.apply(_, [thirtyValues].concat(thirtyValues2));',
         'teardown': 'function multiArrays(){}'
       })
   );
@@ -1751,7 +1718,7 @@
   }
 
   // in the browser, expose `run` to be called later
-  if (window.document) {
+  if (window.document && !window.phantom) {
     window.run = run;
   } else {
     run();
