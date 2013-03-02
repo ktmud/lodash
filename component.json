@@ -2,7 +2,7 @@
   "name": "lodash",
   "repo": "bestander/lodash",
   "description": "An alternative to Underscore.js, delivering consistency, customization, performance, and extra features.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "keywords": [
     "browser",
     "client",
